@@ -6576,10 +6576,12 @@ async function ensureAuthenticated() {
 
   try {
     const auth = getFirebaseAuth();
-    await setLocalAuthPersistenceSafely(auth);
 
-    // Als Firebase de gebruiker al direct kent, hoeven we niet op een listener te wachten.
-    const user = auth.currentUser || await waitForInitialAuthState(auth);
+    // Bij het OPSTARTEN veranderen we de persistence niet meer. Firebase gebruikt in
+    // een normale webbrowser standaard blijvende browser-persistence. setPersistence
+    // doen we alleen vlak vóór een handmatige login. Dit voorkomt dat Safari/IndexedDB
+    // de eerste auth-controle onnodig kan ophouden.
+    const user = auth.currentUser || await waitForInitialAuthState(auth, 4500);
     authCheckCompleted = true;
 
     if (user) {
@@ -6741,11 +6743,13 @@ function closeTabGuard() {
 
 window.addEventListener('pagehide', closeTabGuard);
 
-async function continueMainAppStartup() {
+async function continueMainAppStartup(options = {}) {
   if (mainAppStarted) return;
+  const localPreview = Boolean(options.localPreview);
+
   mainAppStarted = true;
   duplicateTabDetected = false;
-  syncWriteBlocked = false;
+  syncWriteBlocked = localPreview;
 
   document.getElementById('duplicateTabOverlay')?.classList.remove('open');
   document.body.classList.remove('duplicate-tab-blocked');
@@ -6757,6 +6761,15 @@ async function continueMainAppStartup() {
   document.addEventListener('focusout', () => {
     window.setTimeout(flushPendingRemoteRender, 0);
   });
+
+  // Een gedownload .html-bestand wordt lokaal alleen als preview gebruikt.
+  // Firebase Authentication is bedoeld voor de gepubliceerde https://-versie.
+  if (localPreview) {
+    const logoutButton = document.getElementById('deviceLogoutBtn');
+    if (logoutButton) logoutButton.style.display = 'none';
+    setSyncStatus('offline', 'Lokale test – geen live sync');
+    return;
+  }
 
   window.addEventListener('online', () => {
     setSyncStatus('connecting', 'Opnieuw verbinden…');
@@ -6819,9 +6832,30 @@ async function startApp() {
   const mayStart = await checkForExistingBrowserTab();
   if (!mayStart) return;
 
-  const authenticated = await ensureAuthenticated();
-  if (!authenticated) return;
+  // Lokale downloads zijn voortaan een veilige previewmodus. Zo kun je iedere nieuwe
+  // versie vóór het pushen naar GitHub Pages controleren zonder dat Auth op file://
+  // de interface kan blokkeren. De gepubliceerde https://-site blijft gewoon live syncen.
+  if (location.protocol === 'file:') {
+    await continueMainAppStartup({ localPreview: true });
+    return;
+  }
 
+  let authenticated = false;
+  try {
+    authenticated = await promiseWithTimeout(
+      ensureAuthenticated(),
+      7000,
+      'De logincontrole duurde te lang.'
+    );
+  } catch (error) {
+    console.warn('Logincontrole afgebroken door opstart-watchdog:', error);
+    showAuthOverlay();
+    setAuthError('De automatische logincontrole duurde te lang. Log hieronder opnieuw in.');
+    setSyncStatus('offline', 'Inloggen vereist');
+    return;
+  }
+
+  if (!authenticated) return;
   await continueMainAppStartup();
 }
 
