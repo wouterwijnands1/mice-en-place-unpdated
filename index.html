@@ -1391,8 +1391,13 @@
 }
 
     .row.note-row {
-      grid-template-columns: minmax(0, 1fr) 250px;
       min-height: 46px;
+    }
+
+    /* Aantekeningen gebruiken dezelfde bediening als gewone M&P-rijen:
+       item | afkruisvak | direct tekstveld. */
+    .row.note-row.with-check-input {
+      grid-template-columns: minmax(0, 1fr) 54px minmax(250px, 38%);
     }
 
     .row.note-row .value-cell {
@@ -1713,7 +1718,7 @@
       .koud-minmax-header > div { font-size: 0.56rem; padding: 2px 2px; }
       .check-cell { font-size: 0.95rem; }
       .row-input { font-size: 0.85rem; padding: 5px 6px; }
-      .row.note-row { grid-template-columns: minmax(0, 1fr) 180px; }
+      .row.note-row.with-check-input { grid-template-columns: minmax(0, 1fr) 46px minmax(180px, 34%); }
       .nav { grid-template-columns: 1fr; }
       .prod-item-label { font-size: 0.88rem; }
       .prod-day-cell { font-size: 0.82rem; padding: 6px 2px !important; }
@@ -1725,6 +1730,7 @@
       .row { grid-template-columns: minmax(0, 1fr) 78px; }
       .row.with-check-input { grid-template-columns: minmax(0, 1fr) 52px 104px; }
       .row.with-minmax.with-check-input { grid-template-columns: 46px 46px minmax(0, 1fr) 52px 104px; }
+      .row.note-row.with-check-input { grid-template-columns: minmax(0, 1fr) 52px 104px; }
       .item-label { padding: 12px; font-size: 0.92rem; }
       .koud-minmax-header { grid-template-columns: 56px 56px minmax(0, 1fr) 76px; }
       .koud-minmax-header > div { font-size: 0.62rem; }
@@ -2866,7 +2872,7 @@
     const LISTS_STORAGE_KEY = 'bomenpark_update_lists_v1';
     // Firestore is de gedeelde bron; localStorage is uitsluitend cache/fallback voor dit nieuwe project.
     const FIREBASE_SYNC_ENABLED = true;
-    const APP_BUILD_ID = '2026.08.16-auth3-theme6';
+    const APP_BUILD_ID = '2026.08.16-auth3-theme7';
     const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyDVmpckGF2Sv3uA_AbphuuIla-MIgvObg4',
   authDomain: 'mice-en-place-update.firebaseapp.com',
@@ -7057,7 +7063,7 @@ function renderTodoLijst() {
         label.addEventListener('pointerleave', onLabelHoldEnd);
         label.addEventListener('pointercancel', onLabelHoldEnd);
 
-        const usesSplitInputs = genericListUsesSplitInputs(activeListId) && !isNotesSection;
+        const usesSplitInputs = genericListUsesSplitInputs(activeListId);
         if (usesSplitInputs) {
           row.classList.add('with-check-input');
 
