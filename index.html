@@ -6432,19 +6432,56 @@ function friendlyAuthError(error) {
   return error?.message || 'Inloggen is mislukt.';
 }
 
-async function waitForInitialAuthState(auth) {
+function promiseWithTimeout(promise, timeoutMs, message) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = window.setTimeout(() => reject(new Error(message || 'Firebase timeout')), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) window.clearTimeout(timer);
+  });
+}
+
+async function setLocalAuthPersistenceSafely(auth) {
+  try {
+    // LOCAL betekent: ingelogd blijven na refresh en nadat Safari/browser is gesloten.
+    // Een lokale file://-kopie of een browser met beperkte opslag mag de app hier niet op laten vastlopen.
+    await promiseWithTimeout(
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL),
+      3500,
+      'Firebase login-opslag reageerde niet op tijd.'
+    );
+  } catch (error) {
+    console.warn('Firebase Auth persistence kon niet direct worden ingesteld; doorgaan met browserstandaard.', error);
+  }
+}
+
+async function waitForInitialAuthState(auth, timeoutMs = 5000) {
   return await new Promise((resolve, reject) => {
     let unsubscribe = null;
-    unsubscribe = auth.onAuthStateChanged(
-      (user) => {
-        if (unsubscribe) unsubscribe();
-        resolve(user || null);
-      },
-      (error) => {
-        if (unsubscribe) unsubscribe();
-        reject(error);
-      }
-    );
+    let settled = false;
+
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      try { unsubscribe?.(); } catch (_) {}
+      callback(value);
+    };
+
+    const timer = window.setTimeout(() => {
+      console.warn('Firebase Auth statuscontrole duurde te lang; toon login in plaats van vast te blijven staan.');
+      finish(resolve, auth.currentUser || null);
+    }, timeoutMs);
+
+    try {
+      unsubscribe = auth.onAuthStateChanged(
+        (user) => finish(resolve, user || null),
+        (error) => finish(reject, error)
+      );
+    } catch (error) {
+      finish(reject, error);
+    }
   });
 }
 
@@ -6455,9 +6492,10 @@ async function ensureAuthenticated() {
 
   try {
     const auth = getFirebaseAuth();
-    // LOCAL betekent: ingelogd blijven na refresh en nadat Safari/browser is gesloten.
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    const user = await waitForInitialAuthState(auth);
+    await setLocalAuthPersistenceSafely(auth);
+
+    // Als Firebase de gebruiker al direct kent, hoeven we niet op een listener te wachten.
+    const user = auth.currentUser || await waitForInitialAuthState(auth);
     authCheckCompleted = true;
 
     if (user) {
@@ -6466,6 +6504,9 @@ async function ensureAuthenticated() {
     }
 
     showAuthOverlay();
+    if (location.protocol === 'file:') {
+      setAuthError('Lokale testkopie: log hier opnieuw in. De login van GitHub Pages wordt niet automatisch overgenomen.');
+    }
     setSyncStatus('offline', 'Inloggen vereist');
     return false;
   } catch (error) {
@@ -6499,8 +6540,12 @@ async function handleKitchenLogin(event) {
 
   try {
     const auth = getFirebaseAuth();
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    await auth.signInWithEmailAndPassword(email, password);
+    await setLocalAuthPersistenceSafely(auth);
+    await promiseWithTimeout(
+      auth.signInWithEmailAndPassword(email, password),
+      15000,
+      'Firebase reageert niet op de login. Controleer de internetverbinding of open de gepubliceerde GitHub Pages-versie.'
+    );
     if (passwordInput) passwordInput.value = '';
     hideAuthOverlay();
     await continueMainAppStartup();
