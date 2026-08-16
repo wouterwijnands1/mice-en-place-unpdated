@@ -2866,7 +2866,7 @@
     const LISTS_STORAGE_KEY = 'bomenpark_update_lists_v1';
     // Firestore is de gedeelde bron; localStorage is uitsluitend cache/fallback voor dit nieuwe project.
     const FIREBASE_SYNC_ENABLED = true;
-    const APP_BUILD_ID = '2026.08.16-auth3-theme5';
+    const APP_BUILD_ID = '2026.08.16-auth3-theme6';
     const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyDVmpckGF2Sv3uA_AbphuuIla-MIgvObg4',
   authDomain: 'mice-en-place-update.firebaseapp.com',
@@ -6089,7 +6089,12 @@ function renderBestelNamesEditor() {
   return wrap;
 }
 
+function clearDetachedListSections() {
+  document.querySelectorAll('.detached-section-wrap').forEach(el => el.remove());
+}
+
 function renderBestellijst() {
+  clearDetachedListSections();
   updateNav();
   updateHeader();
   // Belangrijk: laad de meta-velden opnieuw uit de eigen state van de bestellijst.
@@ -6340,6 +6345,7 @@ function removeTableRow(rowIndex) {
 }
 
 function renderTableList() {
+  clearDetachedListSections();
   updateNav();
   updateHeader();
   updateMetaBar();
@@ -6548,6 +6554,7 @@ function renderTableList() {
 }
 
 function renderTodoLijst() {
+      clearDetachedListSections();
       updateNav();
       updateHeader();
       updateMetaBar();
@@ -6731,6 +6738,7 @@ function renderTodoLijst() {
 
 
     function renderProductie() {
+      clearDetachedListSections();
       updateNav();
       updateHeader();
       updateMetaBar();
@@ -6975,8 +6983,10 @@ function renderTodoLijst() {
         sectionEl.appendChild(editBar);
       }
 
-      const sectionHasAnyObjects = section.rows.some(entry => typeof entry === 'object' && entry !== null);
       const isNotesSection = /aantekening/i.test(section.title || '');
+      // Aantekeningen gebruiken object-rijen voor hun metadata, maar zijn geen MIN/MAX-tabel.
+      // Zo blijft de sectie visueel een eenvoudige tweekoloms notitielijst.
+      const sectionHasAnyObjects = !isNotesSection && section.rows.some(entry => typeof entry === 'object' && entry !== null);
       if (sectionHasAnyObjects) {
         const mmHead = document.createElement('div');
         mmHead.className = 'koud-minmax-header';
@@ -7172,7 +7182,13 @@ function renderTodoLijst() {
 
       const wrap = document.createElement('div');
       wrap.className = 'detached-section-wrap';
-      wrap.appendChild(buildGenericSection(found.section, found.colIndex, found.sectionIndex, { extraClass: 'detached-koud-notes' }));
+
+      // Gebruik dezelfde .column-kaart als in het hoofdgrid, zodat Aantekeningen
+      // dezelfde afgeronde vorm en rand behoudt wanneer hij onderaan wordt geplaatst.
+      const columnCard = document.createElement('div');
+      columnCard.className = 'column detached-koud-notes-column';
+      columnCard.appendChild(buildGenericSection(found.section, found.colIndex, found.sectionIndex, { extraClass: 'detached-koud-notes' }));
+      wrap.appendChild(columnCard);
       return wrap;
     }
 
@@ -7202,7 +7218,7 @@ function renderTodoLijst() {
       const grid = document.getElementById('listGrid');
       const footerArea = document.querySelector('.footer-area');
       grid.innerHTML = '';
-      footerArea.querySelectorAll('.detached-section-wrap').forEach(el => el.remove());
+      clearDetachedListSections();
       const notesWrap = footerArea.querySelector('.notes-wrap');
       const state = getActiveState();
       const instructionBlock = makeInstructionBlock(activeListId);
@@ -8125,7 +8141,7 @@ console.info('Bomenpark build', APP_BUILD_ID);
         <div class="auth-error" id="authError" role="alert"></div>
         <button class="auth-submit" id="authSubmit" type="submit">Inloggen</button>
         <p class="auth-note">Na één succesvolle login blijft deze iPad aangemeld, ook na refresh of opnieuw openen van de browser.</p>
-        <p class="auth-build">Versie 2026.08.16-auth3-theme5</p>
+        <p class="auth-build">Versie 2026.08.16-auth3-theme6</p>
       </form>
     </div>
   </div>
