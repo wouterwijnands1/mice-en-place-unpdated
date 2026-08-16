@@ -743,14 +743,21 @@
     .row-input {
       width: 100%;
       min-width: 0;
+      min-height: 32px;
       border: 1px solid #d8cfc2;
       border-radius: 8px;
       background: #fff;
       color: var(--text);
       font: inherit;
       font-size: 0.9rem;
+      line-height: 1.25;
       padding: 6px 8px;
       outline: none;
+      resize: none;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      display: block;
     }
 
     .row-input:focus {
@@ -5850,16 +5857,18 @@ function renderTodoLijst() {
           const inputCell = document.createElement('div');
           inputCell.className = 'input-cell';
 
-          const input = document.createElement('input');
-          input.type = 'text';
+          const input = document.createElement('textarea');
           input.className = 'row-input';
+          input.rows = 1;
           input.dataset.list = activeListId;
           input.dataset.key = rowKey;
           input.value = getGenericRowText(state, rowKey);
           input.placeholder = '';
           input.readOnly = isEditing;
+          input.setAttribute('aria-label', `Invoer voor ${rowLabel || 'item'}`);
           input.addEventListener('input', onRowInputChange);
           inputCell.appendChild(input);
+          requestAnimationFrame(() => autoResizeRowInput(input));
 
           if (isEditing && activeListId !== 'bestel') {
             inputCell.innerHTML = '';
@@ -6070,10 +6079,17 @@ function renderTodoLijst() {
       render();
     }
 
+    function autoResizeRowInput(input) {
+      if (!input) return;
+      input.style.height = 'auto';
+      input.style.height = `${Math.max(32, input.scrollHeight)}px`;
+    }
+
     function onRowInputChange(event) {
       if (isEditing) return;
       const state = getActiveState();
       const input = event.currentTarget;
+      autoResizeRowInput(input);
       setGenericRowText(state, input.dataset.key, input.value);
       saveAppState();
     }
