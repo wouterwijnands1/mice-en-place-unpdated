@@ -2866,7 +2866,7 @@
     const LISTS_STORAGE_KEY = 'bomenpark_update_lists_v1';
     // Firestore is de gedeelde bron; localStorage is uitsluitend cache/fallback voor dit nieuwe project.
     const FIREBASE_SYNC_ENABLED = true;
-    const APP_BUILD_ID = '2026.08.16-auth2-theme4';
+    const APP_BUILD_ID = '2026.08.16-auth3-theme5';
     const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyDVmpckGF2Sv3uA_AbphuuIla-MIgvObg4',
   authDomain: 'mice-en-place-update.firebaseapp.com',
@@ -7246,6 +7246,43 @@ function renderTodoLijst() {
       render();
     }
 
+    // Veilige bediening voor generieke waardevelden (o.a. de losse Koud M&P-aantekeningen).
+    // Eén tik schakelt de X-status; een tweede tik binnen korte tijd opent tekstinvoer.
+    function onGenericValueCellClick(event) {
+      if (isEditing) return;
+      const cell = event.currentTarget;
+      const now = Date.now();
+      const lastTap = Number(cell.dataset.genericLastTap || 0);
+
+      if (cell._genericSingleTapTimer && now - lastTap < 360) {
+        clearTimeout(cell._genericSingleTapTimer);
+        cell._genericSingleTapTimer = null;
+        cell.dataset.genericLastTap = '0';
+        onValueDoubleClick({ currentTarget: cell });
+        return;
+      }
+
+      cell.dataset.genericLastTap = String(now);
+      cell._genericSingleTapTimer = window.setTimeout(() => {
+        onValueClick({ currentTarget: cell });
+        cell._genericSingleTapTimer = null;
+        cell.dataset.genericLastTap = '0';
+      }, 300);
+    }
+
+    function onGenericValueCellKeydown(event) {
+      if (isEditing) return;
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onValueDoubleClick({ currentTarget: event.currentTarget });
+        return;
+      }
+      if (event.key === ' ' || event.key === 'Spacebar') {
+        event.preventDefault();
+        onValueClick({ currentTarget: event.currentTarget });
+      }
+    }
+
     function onValueClick(event) {
       if (isEditing) return;
       const state = getActiveState();
@@ -8088,7 +8125,7 @@ console.info('Bomenpark build', APP_BUILD_ID);
         <div class="auth-error" id="authError" role="alert"></div>
         <button class="auth-submit" id="authSubmit" type="submit">Inloggen</button>
         <p class="auth-note">Na één succesvolle login blijft deze iPad aangemeld, ook na refresh of opnieuw openen van de browser.</p>
-        <p class="auth-build">Versie 2026.08.16-auth2-theme4</p>
+        <p class="auth-build">Versie 2026.08.16-auth3-theme5</p>
       </form>
     </div>
   </div>
