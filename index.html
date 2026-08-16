@@ -1695,6 +1695,122 @@
       .koud-minmax-header { grid-template-columns: 56px 56px minmax(0, 1fr) 76px; }
       .koud-minmax-header > div { font-size: 0.62rem; }
     }
+  
+
+    /* Firebase Authentication: alleen zichtbaar op een apparaat dat nog niet is aangemeld. */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(7, 7, 7, 0.78);
+      backdrop-filter: blur(8px);
+    }
+
+    .auth-overlay.open { display: flex; }
+
+    .auth-card {
+      width: min(430px, 100%);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .auth-card-head {
+      padding: 18px 20px;
+      background: linear-gradient(135deg, #090909 0%, #171717 55%, #1f1b18 100%);
+      color: #fff;
+    }
+
+    .auth-card-head h2 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .auth-card-head p {
+      margin: 7px 0 0;
+      color: rgba(255,255,255,0.78);
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 14px;
+      padding: 20px;
+    }
+
+    .auth-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .auth-field label {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .auth-field input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .auth-field input:focus {
+      border-color: rgba(184,150,104,0.9);
+      box-shadow: 0 0 0 3px rgba(184,150,104,0.16);
+    }
+
+    .auth-submit {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid #111;
+      background: #111;
+      color: #fff;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .auth-submit:disabled { opacity: 0.55; cursor: wait; }
+
+    .auth-error {
+      display: none;
+      margin: -2px 0 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #e3bcbc;
+      background: #fff1f1;
+      color: #8f2424;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .auth-error.show { display: block; }
+
+    .auth-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.4;
+      text-align: center;
+    }
+
   </style>
 </head>
 <body>
@@ -1769,6 +1885,7 @@
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
 
   <script>
@@ -1804,6 +1921,8 @@
     let tabGuardChannel = null;
     let duplicateTabDetected = false;
     let mainAppStarted = false;
+    let firebaseAuth = null;
+    let authCheckCompleted = false;
 
     const warmDefaultData = {
   columns: [
@@ -3455,7 +3574,7 @@ async function initFirebaseSharedSync() {
   setSyncStatus('connecting', 'Firebase starten…');
 
   try {
-    const app = firebase.apps?.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+    const app = getOrInitFirebaseApp();
     firestoreDb = firebase.firestore(app);
 
     // Dit moet vóór de eerste Firestore read/write gebeuren.
@@ -6257,6 +6376,135 @@ function handleTabGuardMessage(event) {
   if (message.type === 'probe') announceTabPresence('presence');
 }
 
+
+function getOrInitFirebaseApp() {
+  return firebase.apps?.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+}
+
+function getFirebaseAuth() {
+  if (firebaseAuth) return firebaseAuth;
+  const app = getOrInitFirebaseApp();
+  firebaseAuth = firebase.auth(app);
+  return firebaseAuth;
+}
+
+function setAuthError(message = '') {
+  const box = document.getElementById('authError');
+  if (!box) return;
+  box.textContent = message;
+  box.classList.toggle('show', Boolean(message));
+}
+
+function showAuthOverlay() {
+  document.getElementById('authOverlay')?.classList.add('open');
+  window.setTimeout(() => document.getElementById('authEmail')?.focus(), 0);
+}
+
+function hideAuthOverlay() {
+  document.getElementById('authOverlay')?.classList.remove('open');
+  setAuthError('');
+}
+
+function friendlyAuthError(error) {
+  const code = String(error?.code || '').replace(/^auth\//, '');
+  if (['invalid-credential', 'wrong-password', 'user-not-found'].includes(code)) {
+    return 'E-mailadres of wachtwoord is niet juist.';
+  }
+  if (code === 'invalid-email') return 'Vul een geldig e-mailadres in.';
+  if (code === 'too-many-requests') return 'Te veel mislukte pogingen. Probeer het later opnieuw.';
+  if (code === 'network-request-failed') return 'Geen verbinding met Firebase. Controleer de internetverbinding.';
+  return error?.message || 'Inloggen is mislukt.';
+}
+
+async function waitForInitialAuthState(auth) {
+  return await new Promise((resolve, reject) => {
+    let unsubscribe = null;
+    unsubscribe = auth.onAuthStateChanged(
+      (user) => {
+        if (unsubscribe) unsubscribe();
+        resolve(user || null);
+      },
+      (error) => {
+        if (unsubscribe) unsubscribe();
+        reject(error);
+      }
+    );
+  });
+}
+
+async function ensureAuthenticated() {
+  if (!FIREBASE_SYNC_ENABLED) return true;
+  setSyncStatus('connecting', 'Login controleren…');
+  setAuthError('');
+
+  try {
+    const auth = getFirebaseAuth();
+    // LOCAL betekent: ingelogd blijven na refresh en nadat Safari/browser is gesloten.
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    const user = await waitForInitialAuthState(auth);
+    authCheckCompleted = true;
+
+    if (user) {
+      hideAuthOverlay();
+      return true;
+    }
+
+    showAuthOverlay();
+    setSyncStatus('offline', 'Inloggen vereist');
+    return false;
+  } catch (error) {
+    console.error('Firebase Authentication initialiseren mislukt:', error);
+    showAuthOverlay();
+    setAuthError(friendlyAuthError(error));
+    setSyncStatus('error', 'Login-fout');
+    return false;
+  }
+}
+
+async function handleKitchenLogin(event) {
+  event.preventDefault();
+  const emailInput = document.getElementById('authEmail');
+  const passwordInput = document.getElementById('authPassword');
+  const submitButton = document.getElementById('authSubmit');
+  const email = String(emailInput?.value || '').trim();
+  const password = String(passwordInput?.value || '');
+
+  if (!email || !password) {
+    setAuthError('Vul e-mailadres en wachtwoord in.');
+    return;
+  }
+
+  setAuthError('');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Inloggen…';
+  }
+  setSyncStatus('connecting', 'Inloggen…');
+
+  try {
+    const auth = getFirebaseAuth();
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    await auth.signInWithEmailAndPassword(email, password);
+    if (passwordInput) passwordInput.value = '';
+    hideAuthOverlay();
+    await continueMainAppStartup();
+  } catch (error) {
+    console.error('Inloggen mislukt:', error);
+    setAuthError(friendlyAuthError(error));
+    setSyncStatus('offline', 'Inloggen vereist');
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Inloggen';
+    }
+  }
+}
+
+document.addEventListener('submit', (event) => {
+  if (event.target?.id !== 'authLoginForm') return;
+  handleKitchenLogin(event);
+});
+
 async function checkForExistingBrowserTab() {
   if (typeof window.BroadcastChannel !== 'function') {
     // Geen harde blokkade als de browser deze API niet kent; de Firebase-lijst blijft dan bruikbaar.
@@ -6330,6 +6578,8 @@ async function retryDuplicateTabCheck() {
 
   const mayStart = await checkForExistingBrowserTab();
   if (mayStart) {
+    const authenticated = await ensureAuthenticated();
+    if (!authenticated) return;
     await continueMainAppStartup();
     return;
   }
@@ -6361,13 +6611,37 @@ async function startApp() {
   setSyncStatus('connecting', 'Controleren op ander tabblad…');
   const mayStart = await checkForExistingBrowserTab();
   if (!mayStart) return;
+
+  const authenticated = await ensureAuthenticated();
+  if (!authenticated) return;
+
   await continueMainAppStartup();
 }
 
-startApp();
+window.addEventListener('DOMContentLoaded', startApp);
 </script>
 
-  <div class="duplicate-tab-overlay" id="duplicateTabOverlay" role="alertdialog" aria-modal="true" aria-labelledby="duplicateTabTitle" aria-describedby="duplicateTabText">
+  <div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-card">
+      <div class="auth-card-head">
+        <h2 id="authTitle">Keuken aanmelden</h2>
+        <p>Alleen nodig op een apparaat dat nog niet eerder is aangemeld.</p>
+      </div>
+      <form class="auth-form" id="authLoginForm" autocomplete="on">
+        <div class="auth-field">
+          <label for="authEmail">E-mailadres</label>
+          <input id="authEmail" name="email" type="email" inputmode="email" autocomplete="username" required />
+        </div>
+        <div class="auth-field">
+          <label for="authPassword">Wachtwoord</label>
+          <input id="authPassword" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <div class="auth-error" id="authError" role="alert"></div>
+        <button class="auth-submit" id="authSubmit" type="submit">Inloggen</button>
+        <p class="auth-note">Na één succesvolle login blijft deze iPad aangemeld, ook na refresh of opnieuw openen van de browser.</p>
+      </form>
+    </div>
+  </div>\n\n  <div class="duplicate-tab-overlay" id="duplicateTabOverlay" role="alertdialog" aria-modal="true" aria-labelledby="duplicateTabTitle" aria-describedby="duplicateTabText">
     <div class="duplicate-tab-card">
           <div class="duplicate-tab-icon" aria-hidden="true">!</div>
           <h2 id="duplicateTabTitle">Deze lijst staat al open</h2>
