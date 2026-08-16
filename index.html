@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Bomenpark lijsten</title>
   <style>
     :root {
@@ -20,6 +23,22 @@
       --gold: #b89668;
       --shadow: 0 18px 48px rgba(0,0,0,0.28);
       --sidebar-w: 250px;
+
+      /* Thema-kleuren. Klassiek is exact de bestaande uitstraling. */
+      --theme-body-glow: rgba(255,255,255,0.06);
+      --theme-body-1: #0b0b0b;
+      --theme-body-2: #151515;
+      --theme-dark-1: #090909;
+      --theme-dark-2: #171717;
+      --theme-dark-3: #1f1b18;
+      --theme-sidebar-2: #181512;
+      --theme-accent-1: #b89668;
+      --theme-accent-2: #a98555;
+      --theme-soft-1: #f6ecdd;
+      --theme-soft-2: #ead9c3;
+      --theme-card-1: #fffefc;
+      --theme-card-2: #fffaf3;
+      --theme-wash: rgba(184,150,104,0.06);
     }
 
     * { box-sizing: border-box; }
@@ -645,7 +664,7 @@
       background: linear-gradient(90deg, #171717 0%, #2b2621 100%) !important;
     }
 
-    .section-subtitle[contenteditable="true"] {
+    html[data-theme]:not([data-theme="classic"]) .section-subtitle[contenteditable="true"] {
       color: #fff !important;
       background: linear-gradient(90deg, #b89668 0%, #a98555 100%) !important;
     }
@@ -945,7 +964,7 @@
 
     .edit-bar { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; }
     .edit-button { min-width: 280px; background: #111; color: #fff; border: 1px solid #111; }
-    .edit-button:hover { background: #232323; }
+    html[data-theme]:not([data-theme="classic"]) .edit-button:hover { background: #232323; }
     .backup-button {
       display: none;
       background: #fffaf3;
@@ -1849,6 +1868,225 @@
       text-align: center;
     }
 
+    .auth-build {
+      margin: 8px 0 0;
+      text-align: center;
+      font-size: 0.68rem;
+      letter-spacing: 0.04em;
+      color: #9a9186;
+    }
+
+  
+
+    /* =========================================================
+       SEIZOENSTHEMA'S — rustige restaurantpaletten
+       De basis blijft zwart/ivoor. Het seizoen verschijnt alleen in
+       accenten, actieve navigatie en subtiele lijnen; geen kleurwaas.
+       ========================================================= */
+    html[data-theme="spring"] {
+      --paper: #fffdf9;
+      --paper-2: #f5f6f1;
+      --line: #d5dbd0;
+      --line-strong: #aebca7;
+      --text: #171a17;
+      --muted: #687064;
+      --accent-soft: #e8eee3;
+      --gold: #879b76;
+      --theme-body-1: #0a0c09;
+      --theme-body-2: #12150f;
+      --theme-dark-1: #0a0b09;
+      --theme-dark-2: #141713;
+      --theme-dark-3: #1b2019;
+      --theme-sidebar-2: #11140f;
+      --theme-accent-1: #8ba078;
+      --theme-accent-2: #738966;
+      --theme-soft-1: #eef2ea;
+      --theme-soft-2: #dfe8d8;
+      --theme-card-1: #fffdf9;
+      --theme-card-2: #fffdf9;
+    }
+
+    html[data-theme="summer"] {
+      --paper: #fffdf9;
+      --paper-2: #f7f4ec;
+      --line: #d9d4c7;
+      --line-strong: #b9ad91;
+      --text: #171a1a;
+      --muted: #687171;
+      --accent-soft: #ece8d7;
+      --gold: #b9974d;
+      --theme-body-1: #090c0d;
+      --theme-body-2: #111718;
+      --theme-dark-1: #090c0d;
+      --theme-dark-2: #12191a;
+      --theme-dark-3: #192223;
+      --theme-sidebar-2: #101617;
+      --theme-accent-1: #5f8e8a;
+      --theme-accent-2: #477773;
+      --theme-soft-1: #f4efdf;
+      --theme-soft-2: #e7ddbd;
+      --theme-card-1: #fffdf9;
+      --theme-card-2: #fffdf9;
+    }
+
+    html[data-theme="autumn"] {
+      --paper: #fffdf9;
+      --paper-2: #f7f1ea;
+      --line: #ddd1c5;
+      --line-strong: #bba28e;
+      --text: #1d1916;
+      --muted: #74695f;
+      --accent-soft: #efe4da;
+      --gold: #a96c45;
+      --theme-body-1: #0d0a08;
+      --theme-body-2: #17110d;
+      --theme-dark-1: #0d0a08;
+      --theme-dark-2: #18120e;
+      --theme-dark-3: #211811;
+      --theme-sidebar-2: #15100c;
+      --theme-accent-1: #aa6d46;
+      --theme-accent-2: #8c5635;
+      --theme-soft-1: #f3e9df;
+      --theme-soft-2: #e6d4c3;
+      --theme-card-1: #fffdf9;
+      --theme-card-2: #fffdf9;
+    }
+
+    html[data-theme="winter"] {
+      --paper: #fbfcfd;
+      --paper-2: #f2f5f6;
+      --line: #d3dbe0;
+      --line-strong: #aab9c2;
+      --text: #171b1e;
+      --muted: #68737a;
+      --accent-soft: #e6edf1;
+      --gold: #7894a5;
+      --theme-body-1: #090b0d;
+      --theme-body-2: #11161a;
+      --theme-dark-1: #090b0d;
+      --theme-dark-2: #13191d;
+      --theme-dark-3: #1a2328;
+      --theme-sidebar-2: #101519;
+      --theme-accent-1: #7895a6;
+      --theme-accent-2: #607f91;
+      --theme-soft-1: #eef3f5;
+      --theme-soft-2: #dce6eb;
+      --theme-card-1: #fbfcfd;
+      --theme-card-2: #fbfcfd;
+    }
+
+    /* Achtergrond en donkere vlakken blijven bewust bijna neutraal. */
+    html[data-theme]:not([data-theme="classic"]) body {
+      background: linear-gradient(180deg, var(--theme-body-1) 0%, var(--theme-body-2) 100%);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .sidebar {
+      background: linear-gradient(180deg, var(--theme-dark-1) 0%, var(--theme-sidebar-2) 100%);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .sidebar-head,
+    html[data-theme]:not([data-theme="classic"]) .topbar {
+      background: linear-gradient(135deg, var(--theme-dark-1) 0%, var(--theme-dark-2) 62%, var(--theme-dark-3) 100%);
+    }
+
+    /* Seizoenskleur zit vooral hier: actief item + subtitels. */
+    html[data-theme]:not([data-theme="classic"]) .nav-btn.active,
+    html[data-theme]:not([data-theme="classic"]) .nav-label-input.active,
+    html[data-theme]:not([data-theme="classic"]) .koud-minmax-header,
+    html[data-theme]:not([data-theme="classic"]) .production-table thead th,
+    html[data-theme]:not([data-theme="classic"]) .custom-data-table thead th {
+      background: linear-gradient(180deg, var(--theme-soft-1) 0%, var(--theme-soft-2) 100%);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .nav-btn.active,
+    html[data-theme]:not([data-theme="classic"]) .nav-label-input.active {
+      border-color: var(--theme-accent-1);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .section-subtitle {
+      background: linear-gradient(90deg, var(--theme-accent-1) 0%, var(--theme-accent-2) 100%);
+    }
+
+    .section-subtitle[contenteditable="true"] {
+      background: linear-gradient(90deg, var(--theme-accent-1) 0%, var(--theme-accent-2) 100%) !important;
+    }
+
+    /* Hoofdkoppen blijven neutraal zwart, ook in seizoensthema's. */
+    html[data-theme]:not([data-theme="classic"]) .section-title,
+    html[data-theme]:not([data-theme="classic"]) .notes-title,
+    html[data-theme]:not([data-theme="classic"]) .production-title,
+    html[data-theme]:not([data-theme="classic"]) .name-picker-head {
+      background: linear-gradient(90deg, #171717 0%, #2b2621 100%);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .section-title[contenteditable="true"],
+    html[data-theme]:not([data-theme="classic"]) .production-title[contenteditable="true"] {
+      background: linear-gradient(90deg, #171717 0%, #2b2621 100%) !important;
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .edit-button {
+      background: #111;
+      border-color: #111;
+    }
+    .edit-button:hover { background: #232323; }
+
+    /* Geen seizoenswaas over lijsten of kaarten: papier blijft schoon. */
+    html[data-theme]:not([data-theme="classic"]) .grid,
+    html[data-theme]:not([data-theme="classic"]) .production-board,
+    html[data-theme]:not([data-theme="classic"]) .table-board {
+      background: linear-gradient(180deg, rgba(184,150,104,0.035), transparent 18%);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .column,
+    html[data-theme]:not([data-theme="classic"]) .production-section,
+    html[data-theme]:not([data-theme="classic"]) .table-list-section,
+    html[data-theme]:not([data-theme="classic"]) .notes-wrap {
+      background: var(--theme-card-1);
+    }
+
+    html[data-theme]:not([data-theme="classic"]) .meta-bar {
+      background: linear-gradient(180deg, var(--theme-card-1), var(--paper-2));
+    }
+
+    .theme-picker {
+      display: none;
+      align-items: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 4px 5px 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--theme-card-1);
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .theme-picker select {
+      max-width: 125px;
+      border: 0;
+      border-radius: 999px;
+      padding: 6px 26px 6px 9px;
+      background: var(--theme-soft-1);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .theme-picker select:focus {
+      box-shadow: 0 0 0 2px rgba(184,150,104,0.20);
+    }
+
+    @media (max-width: 700px) {
+      .theme-picker { width: auto; }
+      .theme-picker span { display: none; }
+      .theme-picker select { max-width: 112px; }
+    }
+
   </style>
 </head>
 <body>
@@ -1917,6 +2155,16 @@
         <div class="edit-mode-indicator">Bewerkmodus staat aan — tekst links is nu aanpasbaar.</div>
 
         <div class="edit-bar">
+          <label class="theme-picker" id="themePicker" title="Kies de kleurstelling van de hele site">
+            <span>Thema</span>
+            <select id="themeSelect" aria-label="Kleurthema">
+              <option value="classic">Klassiek</option>
+              <option value="spring">Lente</option>
+              <option value="summer">Zomer</option>
+              <option value="autumn">Herfst</option>
+              <option value="winter">Winter</option>
+            </select>
+          </label>
           <button id="backupDownloadBtn" class="backup-button" type="button" title="Download een lokale back-up van alle lijsten en instellingen">Back-up downloaden</button>
           <button id="editToggle" class="edit-button" type="button" title="Dubbelklik om de lijsttekst te kunnen aanpassen.">Dubbelklik om lijst te bewerken</button>
         </div>
@@ -1933,6 +2181,7 @@
     const LISTS_STORAGE_KEY = 'bomenpark_update_lists_v1';
     // Firestore is de gedeelde bron; localStorage is uitsluitend cache/fallback voor dit nieuwe project.
     const FIREBASE_SYNC_ENABLED = true;
+    const APP_BUILD_ID = '2026.08.16-auth2-theme2';
     const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyDVmpckGF2Sv3uA_AbphuuIla-MIgvObg4',
   authDomain: 'mice-en-place-update.firebaseapp.com',
@@ -1963,6 +2212,10 @@
     let mainAppStarted = false;
     let firebaseAuth = null;
     let authCheckCompleted = false;
+    let authGateStarted = false;
+    let authGateUnsubscribe = null;
+    let authGateRevealTimer = null;
+    let authGateHardTimer = null;
 
     const warmDefaultData = {
   columns: [
@@ -2845,6 +3098,21 @@ const koudDefaultData = {
       return listConfigs.find(list => list.id === id) || listConfigs[0];
     }
 
+    const VALID_THEMES = ['classic', 'spring', 'summer', 'autumn', 'winter'];
+
+    function normalizeTheme(value) {
+      const theme = String(value || 'classic').toLowerCase();
+      return VALID_THEMES.includes(theme) ? theme : 'classic';
+    }
+
+    function applyTheme(value) {
+      const theme = normalizeTheme(value);
+      document.documentElement.dataset.theme = theme;
+      const select = document.getElementById('themeSelect');
+      if (select && select.value !== theme) select.value = theme;
+      return theme;
+    }
+
     function loadAppState() {
       try {
         const raw = localStorage.getItem(LISTS_STORAGE_KEY);
@@ -2905,6 +3173,7 @@ const koudDefaultData = {
           activeListId: parsed.activeListId || 'warm',
           headerEyebrow: parsed.headerEyebrow || "Restaurant t' Bomenpark",
           logoDataUrl: typeof parsed.logoDataUrl === 'string' ? parsed.logoDataUrl : '',
+          theme: normalizeTheme(parsed.theme),
           sidebarSubtitle: parsed.sidebarSubtitle || 'Kies links een lijst. Elke lijst bewaart zijn eigen vinkjes, notities en aangepaste tekst.',
           notesTitle: parsed.notesTitle || 'Notities',
           bestelNames: sanitizedBestelNames.length ? sanitizedBestelNames : clone(DEFAULT_BESTEL_NAMEN),
@@ -2927,6 +3196,7 @@ const koudDefaultData = {
           activeListId: 'warm',
           headerEyebrow: "Restaurant t' Bomenpark",
           logoDataUrl: '',
+          theme: 'classic',
           sidebarSubtitle: 'Kies links een lijst. Elke lijst bewaart zijn eigen vinkjes, notities en aangepaste tekst.',
           notesTitle: 'Notities',
           bestelNames: clone(DEFAULT_BESTEL_NAMEN),
@@ -3092,6 +3362,7 @@ function createDefaultSharedState() {
     version: SHARED_STATE_VERSION,
     headerEyebrow: "Restaurant t' Bomenpark",
     logoDataUrl: '',
+    theme: 'classic',
     sidebarSubtitle: 'Kies links een lijst. Elke lijst bewaart zijn eigen vinkjes, notities en aangepaste tekst.',
     notesTitle: 'Notities',
     bestelNames: clone(DEFAULT_BESTEL_NAMEN),
@@ -3123,6 +3394,7 @@ function extractSharedStateFromAppState() {
     version: SHARED_STATE_VERSION,
     headerEyebrow: String(appState?.headerEyebrow || "Restaurant t' Bomenpark"),
     logoDataUrl: String(appState?.logoDataUrl || ''),
+    theme: normalizeTheme(appState?.theme),
     sidebarSubtitle: String(appState?.sidebarSubtitle || 'Kies links een lijst. Elke lijst bewaart zijn eigen vinkjes, notities en aangepaste tekst.'),
     notesTitle: String(appState?.notesTitle || 'Notities'),
     bestelNames: clone(getBestelNamen()),
@@ -3144,6 +3416,7 @@ function mergeIncomingSharedState(baseState, incomingState, allowedListFields = 
 
   if (typeof incomingState.headerEyebrow === 'string') merged.headerEyebrow = incomingState.headerEyebrow;
   if (typeof incomingState.logoDataUrl === 'string') merged.logoDataUrl = incomingState.logoDataUrl;
+  if (typeof incomingState.theme === 'string') merged.theme = normalizeTheme(incomingState.theme);
   if (typeof incomingState.sidebarSubtitle === 'string') merged.sidebarSubtitle = incomingState.sidebarSubtitle;
   if (typeof incomingState.notesTitle === 'string') merged.notesTitle = incomingState.notesTitle;
   if (Array.isArray(incomingState.bestelNames) && incomingState.bestelNames.length) {
@@ -3213,6 +3486,10 @@ function applySharedStateToAppState(sharedState) {
   }
   if (typeof sharedState.logoDataUrl === 'string') {
     appState.logoDataUrl = sharedState.logoDataUrl;
+  }
+  if (typeof sharedState.theme === 'string') {
+    appState.theme = normalizeTheme(sharedState.theme);
+    applyTheme(appState.theme);
   }
   if (typeof sharedState.sidebarSubtitle === 'string') {
     appState.sidebarSubtitle = sharedState.sidebarSubtitle;
@@ -4337,9 +4614,13 @@ function updateMetaBar() {
     function updateButton() {
       const btn = document.getElementById('editToggle');
       const backupBtn = document.getElementById('backupDownloadBtn');
+      const themePicker = document.getElementById('themePicker');
+      const themeSelect = document.getElementById('themeSelect');
       const activeConfig = listConfigById(activeListId || listConfigs[0].id);
 
       if (backupBtn) backupBtn.style.display = isEditing ? 'inline-flex' : 'none';
+      if (themePicker) themePicker.style.display = isEditing ? 'inline-flex' : 'none';
+      if (themeSelect) themeSelect.value = normalizeTheme(appState?.theme);
 
       if (isEditing) {
         btn.textContent = 'Opslaan';
@@ -4562,6 +4843,7 @@ function updateMetaBar() {
 const BESTEL_DAYS = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO'];
 const DEFAULT_BESTEL_NAMEN = ['Bern', 'Twan', 'Ruben', 'Johan', 'Nine', 'Max'];
 appState = loadAppState();
+appState.theme = applyTheme(appState.theme);
 activeListId = listConfigs.some(config => config.id === appState.activeListId) ? appState.activeListId : 'warm';
 appState.activeListId = activeListId;
 const BESTEL_GRIJS = {
@@ -6392,6 +6674,13 @@ document.getElementById('nameField').addEventListener('input', (event) => {
       render();
     });
 
+    const themeSelect = document.getElementById('themeSelect');
+    themeSelect?.addEventListener('change', (event) => {
+      if (!isEditing) return;
+      appState.theme = applyTheme(event.target.value);
+      saveAppState();
+    });
+
     const backupDownloadBtn = document.getElementById('backupDownloadBtn');
     backupDownloadBtn?.addEventListener('click', () => {
       if (!isEditing) return;
@@ -6604,6 +6893,84 @@ async function ensureAuthenticated() {
   }
 }
 
+function clearAuthGateTimers() {
+  if (authGateRevealTimer) window.clearTimeout(authGateRevealTimer);
+  if (authGateHardTimer) window.clearTimeout(authGateHardTimer);
+  authGateRevealTimer = null;
+  authGateHardTimer = null;
+}
+
+function showUsableLogin(message = '') {
+  showAuthOverlay();
+  if (message) setAuthError(message);
+  setSyncStatus('offline', 'Inloggen vereist');
+}
+
+async function beginPublishedAuthGate() {
+  if (mainAppStarted) return;
+  if (authGateStarted) return;
+  authGateStarted = true;
+  syncWriteBlocked = true;
+
+  // Render de lokale app-shell meteen. Authentication bepaalt alleen of cloud-sync mag starten.
+  // Daardoor kan een haperende auth-status nooit de hele interface in een wachttoestand vasthouden.
+  render();
+  document.getElementById('duplicateTabOverlay')?.classList.remove('open');
+  document.body.classList.remove('duplicate-tab-blocked');
+  setSyncStatus('connecting', 'Sessie herstellen…');
+  setAuthError('');
+
+  // Geen storende flits bij een normale opgeslagen sessie. Als Firebase niet snel antwoordt,
+  // wordt het loginformulier vanzelf bruikbaar en blijft de gebruiker nooit hangen.
+  authGateRevealTimer = window.setTimeout(() => {
+    if (!mainAppStarted) showUsableLogin();
+  }, 1200);
+
+  authGateHardTimer = window.setTimeout(() => {
+    if (!mainAppStarted) {
+      showUsableLogin('De opgeslagen sessie kon niet automatisch worden hersteld. Log hieronder opnieuw in.');
+    }
+  }, 5000);
+
+  try {
+    const auth = getFirebaseAuth();
+
+    // currentUser is direct bruikbaar wanneer Firebase de sessie al heeft hersteld.
+    if (auth.currentUser) {
+      clearAuthGateTimers();
+      hideAuthOverlay();
+      await continueMainAppStartup();
+      return;
+    }
+
+    authGateUnsubscribe = auth.onAuthStateChanged(
+      async (user) => {
+        if (user) {
+          clearAuthGateTimers();
+          hideAuthOverlay();
+          try { authGateUnsubscribe?.(); } catch (_) {}
+          authGateUnsubscribe = null;
+          await continueMainAppStartup();
+          return;
+        }
+
+        // Een geldige reactie zonder gebruiker betekent simpelweg: opnieuw aanmelden.
+        clearAuthGateTimers();
+        showUsableLogin();
+      },
+      (error) => {
+        console.error('Firebase Auth statusfout:', error);
+        clearAuthGateTimers();
+        showUsableLogin(friendlyAuthError(error));
+      }
+    );
+  } catch (error) {
+    console.error('Firebase Authentication kon niet worden gestart:', error);
+    clearAuthGateTimers();
+    showUsableLogin(friendlyAuthError(error));
+  }
+}
+
 async function handleKitchenLogin(event) {
   event.preventDefault();
   const emailInput = document.getElementById('authEmail');
@@ -6633,7 +7000,10 @@ async function handleKitchenLogin(event) {
       'Firebase reageert niet op de login. Controleer de internetverbinding of open de gepubliceerde GitHub Pages-versie.'
     );
     if (passwordInput) passwordInput.value = '';
+    clearAuthGateTimers();
     hideAuthOverlay();
+    try { authGateUnsubscribe?.(); } catch (_) {}
+    authGateUnsubscribe = null;
     await continueMainAppStartup();
   } catch (error) {
     console.error('Inloggen mislukt:', error);
@@ -6798,9 +7168,8 @@ async function retryDuplicateTabCheck() {
 
   const mayStart = await checkForExistingBrowserTab();
   if (mayStart) {
-    const authenticated = await ensureAuthenticated();
-    if (!authenticated) return;
-    await continueMainAppStartup();
+    authGateStarted = false;
+    await beginPublishedAuthGate();
     return;
   }
 
@@ -6840,26 +7209,13 @@ async function startApp() {
     return;
   }
 
-  let authenticated = false;
-  try {
-    authenticated = await promiseWithTimeout(
-      ensureAuthenticated(),
-      7000,
-      'De logincontrole duurde te lang.'
-    );
-  } catch (error) {
-    console.warn('Logincontrole afgebroken door opstart-watchdog:', error);
-    showAuthOverlay();
-    setAuthError('De automatische logincontrole duurde te lang. Log hieronder opnieuw in.');
-    setSyncStatus('offline', 'Inloggen vereist');
-    return;
-  }
-
-  if (!authenticated) return;
-  await continueMainAppStartup();
+  // Op https:// blokkeert Authentication de opstart niet meer. De app-shell wordt direct
+  // opgebouwd; Firebase Auth draait daarnaast en start cloud-sync zodra er een gebruiker is.
+  await beginPublishedAuthGate();
 }
 
 window.addEventListener('DOMContentLoaded', startApp);
+console.info('Bomenpark build', APP_BUILD_ID);
 </script>
 
   <div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
@@ -6880,6 +7236,7 @@ window.addEventListener('DOMContentLoaded', startApp);
         <div class="auth-error" id="authError" role="alert"></div>
         <button class="auth-submit" id="authSubmit" type="submit">Inloggen</button>
         <p class="auth-note">Na één succesvolle login blijft deze iPad aangemeld, ook na refresh of opnieuw openen van de browser.</p>
+        <p class="auth-build">Versie 2026.08.16-auth2-theme2</p>
       </form>
     </div>
   </div>\n\n  <div class="duplicate-tab-overlay" id="duplicateTabOverlay" role="alertdialog" aria-modal="true" aria-labelledby="duplicateTabTitle" aria-describedby="duplicateTabText">
