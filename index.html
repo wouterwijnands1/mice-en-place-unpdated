@@ -1360,24 +1360,24 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
 
   <script>
-    const LISTS_STORAGE_KEY = 'bomenpark_multi_lists_v3';
-    // Live collaboration revision: Firestore is de gedeelde bron; localStorage blijft cache/fallback.
+    // Volledig afgescheiden update-omgeving. Geen sleutel hieronder wordt gedeeld met de oude site.
+    const LISTS_STORAGE_KEY = 'bomenpark_update_lists_v1';
+    // Firestore is de gedeelde bron; localStorage is uitsluitend cache/fallback voor dit nieuwe project.
     const FIREBASE_SYNC_ENABLED = true;
     const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyCFP26WAPOnv2Dnhe4k_qghlgfI-_KCsNw',
-  authDomain: 'mice-en-place.firebaseapp.com',
-  projectId: 'mice-en-place',
-  storageBucket: 'mice-en-place.firebasestorage.app',
-  messagingSenderId: '716824317993',
-  appId: '1:716824317993:web:72276785a4da692280cc38'
+  apiKey: 'AIzaSyDVmpckGF2Sv3uA_AbphuuIla-MIgvObg4',
+  authDomain: 'mice-en-place-update.firebaseapp.com',
+  projectId: 'mice-en-place-update',
+  storageBucket: 'mice-en-place-update.firebasestorage.app',
+  messagingSenderId: '435226679584',
+  appId: '1:435226679584:web:5eb12b36fa78764161df45'
 };
     const FIRESTORE_SHARED_COLLECTION = 'sharedLists';
-    const FIRESTORE_SHARED_DOCUMENT = 'bomenpark-v3-live';
-    const FIRESTORE_LEGACY_DOCUMENT = 'bomenpark-v2';
-    const SHARED_STATE_VERSION = 3;
-    const DEVICE_ID_STORAGE_KEY = 'bomenpark_device_id_v1';
-    const REMOTE_BASELINE_STORAGE_KEY = 'bomenpark_remote_baseline_v3';
-    const LOCAL_PENDING_SYNC_KEY = 'bomenpark_pending_sync_v3';
+    const FIRESTORE_SHARED_DOCUMENT = 'bomenpark-live-v1';
+    const SHARED_STATE_VERSION = 4;
+    const DEVICE_ID_STORAGE_KEY = 'bomenpark_update_device_id_v1';
+    const REMOTE_BASELINE_STORAGE_KEY = 'bomenpark_update_remote_baseline_v1';
+    const LOCAL_PENDING_SYNC_KEY = 'bomenpark_update_pending_sync_v1';
 
     const warmDefaultData = {
   columns: [
@@ -2577,7 +2577,7 @@ async function saveSharedStateToCloud() {
       // of de Firebase-rechten zijn gecorrigeerd.
       syncWriteBlocked = true;
     }
-    setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? 'Sync-fout – lokaal bewaard' : 'Offline – lokaal bewaard');
+    setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? `Sync-fout: ${String(error?.code || 'onbekend').replace(/^firestore\//, '')}` : 'Offline – lokaal bewaard');
   }
 }
 
@@ -2699,17 +2699,9 @@ async function initFirebaseSharedSync() {
       isApplyingSharedState = false;
       setLocalPendingSync(localCarryOverDiff.length > 0);
     } else if (firstSnapshot && !firstSnapshot.exists) {
-      // Nieuwe v3 live-lijst: neem operationele waarden van dit apparaat mee en migreer
-      // de oude v2-structuur indien die bestaat. Een transactie voorkomt dubbel initialiseren.
-      let seedState = extractSharedStateFromAppState();
-      try {
-        const legacySnapshot = await firestoreDb.collection(FIRESTORE_SHARED_COLLECTION).doc(FIRESTORE_LEGACY_DOCUMENT).get();
-        if (legacySnapshot.exists) {
-          seedState = mergeLegacyStructureIntoSharedState(seedState, legacySnapshot.data() || {});
-        }
-      } catch (legacyError) {
-        console.warn('Oude Firebase-structuur kon niet worden gelezen; lokale structuur wordt gebruikt.', legacyError);
-      }
+      // Dit is een volledig nieuw Firebase-project. Initialiseer uitsluitend vanuit de
+      // lijstdefinitie en eventuele invoer van deze NIEUWE site; raak oude Firebase-data nooit aan.
+      const seedState = extractSharedStateFromAppState();
 
       try {
         await firestoreDb.runTransaction(async transaction => {
@@ -2756,7 +2748,7 @@ async function initFirebaseSharedSync() {
       handleSharedSnapshot,
       (error) => {
         console.error('Live synchronisatie met Firebase mislukt:', error);
-        setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? 'Sync-fout – lokaal bewaard' : 'Offline – lokaal bewaard');
+        setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? `Sync-fout: ${String(error?.code || 'onbekend').replace(/^firestore\//, '')}` : 'Offline – lokaal bewaard');
       }
     );
 
@@ -2764,11 +2756,13 @@ async function initFirebaseSharedSync() {
     setLocalPendingSync(pendingAfterConnect.length > 0);
     if (pendingAfterConnect.length) queueSharedStateSave(40);
 
-    setSyncStatus(navigator.onLine ? 'synced' : 'offline', navigator.onLine ? 'Live gesynchroniseerd' : 'Offline – lokaal bewaard');
+    // Wacht op de eerste echte onSnapshot() voordat 'Live gesynchroniseerd' wordt getoond.
+    setSyncStatus(navigator.onLine ? 'connecting' : 'offline', navigator.onLine ? 'Realtime verbinden…' : 'Offline – lokaal bewaard');
   } catch (error) {
     console.error('Firebase initialiseren mislukt:', error);
     firebaseSyncReady = false;
-    setSyncStatus('error', 'Firebase niet bereikbaar');
+    const code = String(error?.code || 'onbekend').replace(/^firestore\//, '');
+    setSyncStatus('error', `Sync-fout: ${code}`);
   }
 }
 
