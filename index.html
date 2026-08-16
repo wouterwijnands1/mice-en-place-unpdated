@@ -1321,6 +1321,8 @@
         </div>
       </div>
 
+      <div id="syncDiagnostic" style="display:none; margin:10px 16px 0; padding:12px 14px; border:1px solid #d9a0a0; border-radius:14px; background:#fff1f1; color:#5f1717; font-family:Arial,sans-serif; font-size:0.86rem; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere;"></div>
+
       <div class="meta-bar" id="metaBar" style="display:none;">
         <div class="meta-field">
           <label for="dateField">Datum</label>
@@ -2235,6 +2237,34 @@ function setSyncStatus(state, text) {
   label.textContent = text;
 }
 
+function formatFirebaseError(stage, error) {
+  const code = String(error?.code || 'onbekend').replace(/^firestore\//, '');
+  const message = String(error?.message || error || 'Geen extra foutinformatie');
+  return [
+    `Firebase fout tijdens: ${stage}`,
+    `Code: ${code}`,
+    `Melding: ${message}`,
+    `Project: ${FIREBASE_CONFIG.projectId}`,
+    `Database: (default)`,
+    `Pad: ${FIRESTORE_SHARED_COLLECTION}/${FIRESTORE_SHARED_DOCUMENT}`,
+    `Pagina: ${location.protocol === 'file:' ? 'lokaal HTML-bestand (file://)' : location.origin}`
+  ].join('\n');
+}
+
+function showSyncDiagnostic(stage, error) {
+  const box = document.getElementById('syncDiagnostic');
+  if (!box) return;
+  box.textContent = formatFirebaseError(stage, error);
+  box.style.display = 'block';
+}
+
+function clearSyncDiagnostic() {
+  const box = document.getElementById('syncDiagnostic');
+  if (!box) return;
+  box.textContent = '';
+  box.style.display = 'none';
+}
+
 function makeDefaultSharedListState(config) {
   const defaults = config.defaultData || {};
   const listState = {
@@ -2551,6 +2581,7 @@ async function saveSharedStateToCloud() {
     if (navigator.onLine) setSyncStatus('synced', 'Live gesynchroniseerd');
   } catch (error) {
     console.error('Opslaan van gedeelde lijst mislukt:', error);
+    showSyncDiagnostic('wijziging opslaan', error);
 
     // Alleen bij een echt ontbrekend document opnieuw aanmaken. Normale updates blijven granulair.
     if (error?.code === 'not-found') {
@@ -2569,6 +2600,7 @@ async function saveSharedStateToCloud() {
         return;
       } catch (recoveryError) {
         console.error('Herstellen van gedeeld document mislukt:', recoveryError);
+        showSyncDiagnostic('document herstellen', recoveryError);
       }
     }
 
@@ -2644,24 +2676,31 @@ async function initFirebaseSharedSync() {
   const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
   const hasConfig = requiredKeys.every(key => String(FIREBASE_CONFIG?.[key] || '').trim());
   if (!hasConfig) {
-    console.warn('Firebase sync staat aan, maar FIREBASE_CONFIG is nog niet ingevuld.');
+    const error = new Error('Firebase-configuratie is onvolledig.');
+    showSyncDiagnostic('configuratie controleren', error);
     setSyncStatus('error', 'Firebase niet ingesteld');
     return;
   }
 
-  setSyncStatus('connecting', 'Verbinden…');
-  const localAtSyncStart = extractSharedStateFromAppState();
-  const storedRemoteBaseline = loadStoredRemoteBaseline();
+  clearSyncDiagnostic();
+  setSyncStatus('connecting', 'Firebase starten…');
 
   try {
     const app = firebase.apps?.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
     firestoreDb = firebase.firestore(app);
 
-    // Op iPads/Safari blijft een lokale Firestore-cache beschikbaar als wifi tijdelijk wegvalt.
+    // Dit moet vóór de eerste Firestore read/write gebeuren.
+    // Het maakt serialisatie robuuster als een optioneel veld onverhoopt undefined bevat.
+    try {
+      firestoreDb.settings({ ignoreUndefinedProperties: true, merge: true });
+    } catch (settingsError) {
+      console.warn('Firestore settings konden niet worden aangepast:', settingsError);
+    }
+
+    // Persistence is nuttig op iPads, maar mag een eerste verbinding nooit blokkeren.
     try {
       await firestoreDb.enablePersistence({ synchronizeTabs: true });
     } catch (persistenceError) {
-      // De app blijft functioneren als IndexedDB/persistentie niet beschikbaar is.
       if (!['failed-precondition', 'unimplemented'].includes(persistenceError?.code)) {
         console.warn('Firestore offline-persistentie kon niet worden ingeschakeld:', persistenceError);
       }
@@ -2669,98 +2708,105 @@ async function initFirebaseSharedSync() {
 
     sharedDocRef = firestoreDb.collection(FIRESTORE_SHARED_COLLECTION).doc(FIRESTORE_SHARED_DOCUMENT);
 
-    let firstSnapshot = null;
+    // STAP 1: minimale schrijftest. Als dit faalt is het geen probleem met de restaurantdata.
+    setSyncStatus('connecting', 'Firebase schrijftest…');
+    try {
+      await sharedDocRef.set({
+        _connectionTest: {
+          projectId: FIREBASE_CONFIG.projectId,
+          appId: FIREBASE_CONFIG.appId,
+          deviceId: DEVICE_ID,
+          status: 'ok',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }
+      }, { merge: true });
+    } catch (writeTestError) {
+      console.error('Firebase minimale schrijftest mislukt:', writeTestError);
+      firebaseSyncReady = false;
+      showSyncDiagnostic('minimale schrijftest', writeTestError);
+      const code = String(writeTestError?.code || 'onbekend').replace(/^firestore\//, '');
+      setSyncStatus('error', `Sync-fout: ${code}`);
+      return;
+    }
+
+    // STAP 2: leestest vanaf hetzelfde document.
+    setSyncStatus('connecting', 'Firebase leestest…');
+    let firstSnapshot;
     try {
       firstSnapshot = await sharedDocRef.get();
-    } catch (loadError) {
-      console.warn('Cloudlijst kon bij start niet direct worden geladen; lokale cache blijft actief.', loadError);
+    } catch (readTestError) {
+      console.error('Firebase leestest mislukt:', readTestError);
+      firebaseSyncReady = false;
+      showSyncDiagnostic('leestest', readTestError);
+      const code = String(readTestError?.code || 'onbekend').replace(/^firestore\//, '');
+      setSyncStatus('error', `Sync-fout: ${code}`);
+      return;
     }
 
-    if (firstSnapshot?.exists) {
-      const currentLocal = extractSharedStateFromAppState();
-      const initialRemote = normalizeSharedState(firstSnapshot.data() || {}, currentLocal);
+    if (!firstSnapshot.exists) {
+      const error = new Error('De schrijftest gaf geen fout, maar het document kan daarna niet worden teruggelezen.');
+      showSyncDiagnostic('document teruglezen', error);
+      setSyncStatus('error', 'Sync-fout: document ontbreekt');
+      return;
+    }
 
-      let localCarryOverDiff = [];
-      if (hasLocalPendingSync() && storedRemoteBaseline) {
-        // Onbevestigde wijzigingen uit een vorige sessie alleen ten opzichte van de laatst
-        // bevestigde cloudstaat meenemen. Zo overschrijven we geen nieuwe wijzigingen van een andere iPad.
-        localCarryOverDiff = buildSharedDiff(storedRemoteBaseline, currentLocal);
-      } else {
-        // Ook wijzigingen die de gebruiker maakte terwijl Firebase nog aan het verbinden was behouden.
-        localCarryOverDiff = buildSharedDiff(localAtSyncStart, currentLocal);
-      }
-
-      const mergedInitialState = applySharedDiff(clone(initialRemote), localCarryOverDiff);
-      lastKnownRemoteSharedState = clone(initialRemote);
-      storeRemoteBaseline(lastKnownRemoteSharedState);
-      isApplyingSharedState = true;
-      applySharedStateToAppState(mergedInitialState);
-      saveLocalAppStateOnly();
-      isApplyingSharedState = false;
-      setLocalPendingSync(localCarryOverDiff.length > 0);
-    } else if (firstSnapshot && !firstSnapshot.exists) {
-      // Dit is een volledig nieuw Firebase-project. Initialiseer uitsluitend vanuit de
-      // lijstdefinitie en eventuele invoer van deze NIEUWE site; raak oude Firebase-data nooit aan.
+    // STAP 3: initialiseert de restaurantdata alleen als dit nieuwe document die nog niet bevat.
+    const existingData = firstSnapshot.data() || {};
+    if (!existingData.lists || !existingData.version) {
+      setSyncStatus('connecting', 'Lijst initialiseren…');
       const seedState = extractSharedStateFromAppState();
-
       try {
-        await firestoreDb.runTransaction(async transaction => {
-          const check = await transaction.get(sharedDocRef);
-          if (!check.exists) {
-            transaction.set(sharedDocRef, {
-              ...seedState,
-              _sync: {
-                schemaVersion: SHARED_STATE_VERSION,
-                updatedBy: DEVICE_ID,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-              }
-            });
+        await sharedDocRef.set({
+          ...seedState,
+          _sync: {
+            schemaVersion: SHARED_STATE_VERSION,
+            updatedBy: DEVICE_ID,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           }
-        });
-
-        const resolvedSnapshot = await sharedDocRef.get();
-        const resolvedState = resolvedSnapshot.exists
-          ? normalizeSharedState(resolvedSnapshot.data() || {}, seedState)
-          : seedState;
-        lastKnownRemoteSharedState = clone(resolvedState);
-        storeRemoteBaseline(lastKnownRemoteSharedState);
-        setLocalPendingSync(false);
-        isApplyingSharedState = true;
-        applySharedStateToAppState(resolvedState);
-        saveLocalAppStateOnly();
-        isApplyingSharedState = false;
+        }, { merge: true });
+        firstSnapshot = await sharedDocRef.get();
       } catch (seedError) {
-        console.warn('Live-lijst kon nog niet worden geïnitialiseerd; lokaal werken blijft mogelijk.', seedError);
-        lastKnownRemoteSharedState = clone(seedState);
+        console.error('Firebase verbinding werkt, maar restaurantdata schrijven mislukt:', seedError);
+        firebaseSyncReady = false;
+        showSyncDiagnostic('restaurantlijst initialiseren (verbindingstest was WEL succesvol)', seedError);
+        const code = String(seedError?.code || 'onbekend').replace(/^firestore\//, '');
+        setSyncStatus('error', `Lijstfout: ${code}`);
+        return;
       }
-    } else {
-      // Offline zonder bruikbare Firestore-snapshot: gebruik de laatst bevestigde remote basis
-      // als die beschikbaar is, zodat lokale offline wijzigingen als verschil herkenbaar blijven.
-      lastKnownRemoteSharedState = storedRemoteBaseline
-        ? normalizeSharedState(storedRemoteBaseline, createDefaultSharedState())
-        : extractSharedStateFromAppState();
     }
+
+    const remoteState = normalizeSharedState(firstSnapshot.data() || {}, createDefaultSharedState());
+    lastKnownRemoteSharedState = clone(remoteState);
+    storeRemoteBaseline(lastKnownRemoteSharedState);
+
+    isApplyingSharedState = true;
+    applySharedStateToAppState(remoteState);
+    saveLocalAppStateOnly();
+    isApplyingSharedState = false;
+    setLocalPendingSync(false);
 
     firebaseSyncReady = true;
+    clearSyncDiagnostic();
 
     sharedSyncUnsubscribe = sharedDocRef.onSnapshot(
       { includeMetadataChanges: true },
-      handleSharedSnapshot,
+      (snapshot) => {
+        clearSyncDiagnostic();
+        handleSharedSnapshot(snapshot);
+      },
       (error) => {
         console.error('Live synchronisatie met Firebase mislukt:', error);
-        setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? `Sync-fout: ${String(error?.code || 'onbekend').replace(/^firestore\//, '')}` : 'Offline – lokaal bewaard');
+        showSyncDiagnostic('realtime listener', error);
+        const code = String(error?.code || 'onbekend').replace(/^firestore\//, '');
+        setSyncStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? `Sync-fout: ${code}` : 'Offline – lokaal bewaard');
       }
     );
 
-    const pendingAfterConnect = buildSharedDiff(lastKnownRemoteSharedState || extractSharedStateFromAppState(), extractSharedStateFromAppState());
-    setLocalPendingSync(pendingAfterConnect.length > 0);
-    if (pendingAfterConnect.length) queueSharedStateSave(40);
-
-    // Wacht op de eerste echte onSnapshot() voordat 'Live gesynchroniseerd' wordt getoond.
     setSyncStatus(navigator.onLine ? 'connecting' : 'offline', navigator.onLine ? 'Realtime verbinden…' : 'Offline – lokaal bewaard');
   } catch (error) {
     console.error('Firebase initialiseren mislukt:', error);
     firebaseSyncReady = false;
+    showSyncDiagnostic('Firebase initialiseren', error);
     const code = String(error?.code || 'onbekend').replace(/^firestore\//, '');
     setSyncStatus('error', `Sync-fout: ${code}`);
   }
