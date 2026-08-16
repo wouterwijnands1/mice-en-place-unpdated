@@ -4205,7 +4205,8 @@ function removeProductionRow(sectionIndex, rowIndex) {
     
 function listUsesMetaFields(listId) {
   const type = listConfigById(listId)?.type;
-  return type === LIST_TYPE_DAY || type === LIST_TYPE_WEEK;
+  // Dag-, week- en bestellijsten bewaren ieder hun eigen datum en naam van de invuller.
+  return type === LIST_TYPE_DAY || type === LIST_TYPE_WEEK || type === LIST_TYPE_ORDER;
 }
 
 function genericListUsesSplitInputs(listId) {
@@ -4957,6 +4958,9 @@ function renderBestelNamesEditor() {
 function renderBestellijst() {
   updateNav();
   updateHeader();
+  // Belangrijk: laad de meta-velden opnieuw uit de eigen state van de bestellijst.
+  // Zonder dit bleef bij wisselen vanaf Warm M&P de vorige naam/datum zichtbaar.
+  updateMetaBar();
 
   const grid = document.getElementById('listGrid');
   grid.innerHTML = '';
