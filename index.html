@@ -943,9 +943,17 @@
       padding: 16px; font: inherit; color: var(--text); outline: none; background: transparent;
     }
 
-    .edit-bar { display: flex; justify-content: center; padding-bottom: 8px; }
+    .edit-bar { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; }
     .edit-button { min-width: 280px; background: #111; color: #fff; border: 1px solid #111; }
     .edit-button:hover { background: #232323; }
+    .backup-button {
+      display: none;
+      background: #fffaf3;
+      color: #171717;
+      border: 1px solid #d6c2a6;
+      min-width: 190px;
+    }
+    .backup-button:hover { background: #f5eadb; }
 
     
 .edit-mode-indicator { text-align: center; color: #7b5b36; font-weight: 700; display: none; }
@@ -1782,6 +1790,29 @@
       box-shadow: 0 0 0 3px rgba(184,150,104,0.16);
     }
 
+    .device-logout-btn {
+      border: 1px solid #d8cfc2;
+      background: rgba(255,255,255,0.72);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .device-logout-btn:hover {
+      background: #fff;
+      color: var(--text);
+    }
+
+    .device-logout-btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
     .auth-submit {
       width: 100%;
       border-radius: 999px;
@@ -1848,6 +1879,7 @@
             <span class="sync-status-dot" aria-hidden="true"></span>
             <span id="syncStatusText">Verbinden…</span>
           </div>
+          <button id="deviceLogoutBtn" class="device-logout-btn" type="button" title="Meld alleen dit apparaat af">Dit apparaat uitloggen</button>
           <button id="toggleTodoViewBtn" type="button">Toon alleen open taken</button>
           <button id="clearValuesBtn" class="danger" type="button">Alles wissen</button>
         </div>
@@ -1885,6 +1917,7 @@
         <div class="edit-mode-indicator">Bewerkmodus staat aan — tekst links is nu aanpasbaar.</div>
 
         <div class="edit-bar">
+          <button id="backupDownloadBtn" class="backup-button" type="button" title="Download een lokale back-up van alle lijsten en instellingen">Back-up downloaden</button>
           <button id="editToggle" class="edit-button" type="button" title="Dubbelklik om de lijsttekst te kunnen aanpassen.">Dubbelklik om lijst te bewerken</button>
         </div>
       </div>
@@ -4267,9 +4300,45 @@ function updateMetaBar() {
 }
 
 
+    function makeBackupFilename() {
+      const now = new Date();
+      const pad = (value) => String(value).padStart(2, '0');
+      const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      return `bomenpark-mise-en-place-backup_${stamp}.json`;
+    }
+
+    function downloadFullBackup() {
+      // Een back-up bevat uitsluitend de gedeelde restaurantdata en instellingen.
+      // Firebase-wachtwoorden, login-tokens en andere authenticatiegegevens worden niet geëxporteerd.
+      const backup = {
+        format: 'Bomenpark Mise-en-Place Backup',
+        backupVersion: 1,
+        exportedAt: new Date().toISOString(),
+        sharedStateVersion: SHARED_STATE_VERSION,
+        firebaseProjectId: FIREBASE_CONFIG.projectId,
+        firestorePath: `${FIRESTORE_SHARED_COLLECTION}/${FIRESTORE_SHARED_DOCUMENT}`,
+        appState: clone(appState)
+      };
+
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = makeBackupFilename();
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     function updateButton() {
       const btn = document.getElementById('editToggle');
+      const backupBtn = document.getElementById('backupDownloadBtn');
       const activeConfig = listConfigById(activeListId || listConfigs[0].id);
+
+      if (backupBtn) backupBtn.style.display = isEditing ? 'inline-flex' : 'none';
 
       if (isEditing) {
         btn.textContent = 'Opslaan';
@@ -6319,6 +6388,17 @@ document.getElementById('nameField').addEventListener('input', (event) => {
       render();
     });
 
+    const backupDownloadBtn = document.getElementById('backupDownloadBtn');
+    backupDownloadBtn?.addEventListener('click', () => {
+      if (!isEditing) return;
+      try {
+        downloadFullBackup();
+      } catch (error) {
+        console.error('Back-up downloaden mislukt:', error);
+        window.alert('De back-up kon niet worden gedownload. Probeer het opnieuw.');
+      }
+    });
+
     const editToggle = document.getElementById('editToggle');
     editToggle.addEventListener('dblclick', () => {
       if (isEditing) return;
@@ -6564,6 +6644,68 @@ async function handleKitchenLogin(event) {
 document.addEventListener('submit', (event) => {
   if (event.target?.id !== 'authLoginForm') return;
   handleKitchenLogin(event);
+});
+
+async function handleDeviceLogout() {
+  const confirmed = window.confirm(
+    'Dit apparaat uitloggen?\n\nAlleen deze iPad/browser wordt afgemeld. Andere apparaten blijven ingelogd.'
+  );
+  if (!confirmed) return;
+
+  const button = document.getElementById('deviceLogoutBtn');
+  const oldText = button?.textContent || 'Dit apparaat uitloggen';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Uitloggen…';
+  }
+
+  try {
+    // Geef een eventuele laatste gebruikerswijziging nog de kans om naar Firebase te gaan.
+    if (hasLocalPendingSync() && firebaseSyncReady && navigator.onLine) {
+      setSyncStatus('saving', 'Laatste wijziging opslaan…');
+      await promiseWithTimeout(
+        saveSharedStateToCloud(),
+        6000,
+        'Laatste wijziging kon niet op tijd worden bevestigd.'
+      ).catch((error) => {
+        console.warn('Uitloggen gaat door; laatste synchronisatie kon niet worden bevestigd:', error);
+      });
+    }
+
+    syncWriteBlocked = true;
+    window.clearTimeout(sharedSaveTimer);
+    sharedSaveTimer = null;
+    try { sharedSyncUnsubscribe?.(); } catch (_) {}
+    sharedSyncUnsubscribe = null;
+    firebaseSyncReady = false;
+
+    setSyncStatus('connecting', 'Uitloggen…');
+    const auth = getFirebaseAuth();
+    await promiseWithTimeout(
+      auth.signOut(),
+      10000,
+      'Firebase reageerde niet op het uitloggen.'
+    );
+
+    // Herstart schoon. Omdat Firebase Auth lokaal is afgemeld verschijnt daarna het loginvenster.
+    window.location.reload();
+  } catch (error) {
+    console.error('Dit apparaat uitloggen mislukt:', error);
+    syncWriteBlocked = false;
+    setSyncStatus(firebaseSyncReady ? 'synced' : 'error', firebaseSyncReady ? 'Live gesynchroniseerd' : 'Uitloggen mislukt');
+    window.alert('Uitloggen is niet gelukt. Controleer de internetverbinding en probeer het opnieuw.');
+    if (button) {
+      button.disabled = false;
+      button.textContent = oldText;
+    }
+  }
+}
+
+document.addEventListener('click', (event) => {
+  const logoutButton = event.target?.closest?.('#deviceLogoutBtn');
+  if (!logoutButton) return;
+  event.preventDefault();
+  handleDeviceLogout();
 });
 
 async function checkForExistingBrowserTab() {
