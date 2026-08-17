@@ -2872,7 +2872,7 @@
     const LISTS_STORAGE_KEY = 'bomenpark_update_lists_v1';
     // Firestore is de gedeelde bron; localStorage is uitsluitend cache/fallback voor dit nieuwe project.
     const FIREBASE_SYNC_ENABLED = true;
-    const APP_BUILD_ID = '2026.08.16-auth3-theme7';
+    const APP_BUILD_ID = '2026.08.17-auth3-theme8-ipadfocus';
     const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyDVmpckGF2Sv3uA_AbphuuIla-MIgvObg4',
   authDomain: 'mice-en-place-update.firebaseapp.com',
@@ -4318,11 +4318,29 @@ function findFocusedElement(snapshot) {
   }) || null;
 }
 
+function isUninterruptedTextEntryElement(el) {
+  if (!el || el === document.body) return false;
+  if (el.isContentEditable) return true;
+
+  const tag = String(el.tagName || '').toLowerCase();
+  if (tag === 'textarea' || tag === 'select') return true;
+  if (tag !== 'input') return false;
+
+  // Tekst-/datum-/nummerinvoer en vergelijkbare iOS-controls moeten in de DOM blijven
+  // zolang ze focus hebben. Anders sluit iPadOS het schermtoetsenbord/picker bij iedere render.
+  const type = String(el.type || 'text').toLowerCase();
+  return !['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'color', 'file', 'image', 'hidden'].includes(type);
+}
+
 function renderPreservingFormFocus() {
+  const active = document.activeElement;
   const focus = getFormFocusSnapshot();
 
-  // Tijdens het bewerken van vaste lijsttekst geen remote render midden in een contenteditable-veld.
-  if (focus?.isContentEditable) {
+  // iPad/iOS: een textarea/input na render opnieuw focussen is te laat; zodra het oude
+  // DOM-element wordt vervangen is het schermtoetsenbord al gesloten. Daarom stellen we
+  // remote renders volledig uit zolang iemand in een invoerveld of contenteditable typt.
+  // De Firebase-state wordt in handleSharedSnapshot wel direct toegepast en lokaal bewaard.
+  if (isUninterruptedTextEntryElement(active)) {
     pendingRemoteRender = true;
     return;
   }
@@ -4346,7 +4364,7 @@ function renderPreservingFormFocus() {
 function flushPendingRemoteRender() {
   if (!pendingRemoteRender) return;
   const active = document.activeElement;
-  if (active?.isContentEditable) return;
+  if (isUninterruptedTextEntryElement(active)) return;
   pendingRemoteRender = false;
   renderPreservingFormFocus();
 }
